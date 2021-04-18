@@ -1,11 +1,9 @@
-
 import numpy as np
 import cv2
 import os
-import tensorflow
 from scipy import ndimage
 from scipy.spatial import distance
-#from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans
 
 # takes two arrays as parameters and find the l1 distance
 def L1_dist(vec1, vec2):
@@ -192,14 +190,9 @@ def image_class(all_bovw, centers):
 # A k-means clustering algorithm who takes 2 parameter which is number of cluster(k) and the other is descriptors list(unordered 1d array)
 # Returns an array that holds central points.
 def kmeans(k, descriptor_list):
-
-    def input_fn():
-        return tensorflow.compat.v1.train.limit_epochs(
-            tensorflow.convert_to_tensor(descriptor_list, dtype=tensorflow.float32), num_epochs=1)
-
-    kmeans = tensorflow.compat.v1.estimator.experimental.KMeans(num_clusters = k, use_mini_batch=True)
-    kmeans.train(descriptor_list)
-    visual_words = kmeans.cluster_centers()
+    kmeans = KMeans(n_clusters = k, n_init=10)
+    kmeans.fit(descriptor_list)
+    visual_words = kmeans.cluster_centers_
     return visual_words
 
 # Creates descriptors using sift library
