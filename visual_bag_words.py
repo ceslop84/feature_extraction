@@ -335,25 +335,31 @@ def build_filters():
 # return a dictionary that holds all images category by category.
 def load_images_from_file(file):
     images = {}
+    files = {}
     with open(file) as f:
         for line in f:
             img_path = line.split()[0]
             cat = line.split()[1]
             img = cv2.imread(img_path)
             if img is not None:
-                cat_list = images.get(cat)
-                if cat_list is not None:
-                    cat_list.append(img)
+                cat_img_list = images.get(cat)
+                cat_fl_list = files.get(cat)
+                if (cat_img_list is not None) and (cat_fl_list is not None):
+                    cat_img_list.append(img)
+                    cat_fl_list.append(img_path)
                 else:
-                    cat_list = []
-                    cat_list.append(img)
-                    images[cat] = cat_list
-    return images
+                    cat_img_list = []
+                    cat_fl_list = []
+                    cat_img_list.append(img)
+                    cat_fl_list.append(img_path)
+                    images[cat] = cat_img_list
+                    files[cat] = cat_fl_list
+    return images, files
 
 def main():
 
-    images = load_images_from_file('train_small.txt')  # take all images category by category
-    test = load_images_from_file("test_small.txt") # take test images
+    #train, train_files = load_images_from_file('train_small.txt')  # take all images category by category
+    #test, test_files = load_images_from_file("test_small.txt") # take test images
 
     ## gabor filter ##
 
@@ -378,17 +384,34 @@ def main():
 
     ## Bag of Visual Words without spatial tiling ##
 
+    # sifts = sift_features(train)
+    # descriptor_list = sifts[0] # Takes the descriptor list which is unordered one
+    # all_bovw_feature = sifts[1] # Takes the sift features that is seperated class by class for train data
+    # visual_words = kmeans(150, descriptor_list) # Takes the central points which is visual words
+    # bovw_train = image_class(all_bovw_feature, visual_words) # Creates histograms for train data
 
-    sifts = sift_features(images)
-    descriptor_list = sifts[0] # Takes the descriptor list which is unordered one
-    all_bovw_feature = sifts[1] # Takes the sift features that is seperated class by class for train data
-    visual_words = kmeans(150, descriptor_list) # Takes the central points which is visual words
-    bovw_train = image_class(all_bovw_feature, visual_words) # Creates histograms for train data
-    test_bovw_feature = sift_features(test)[1] # Takes the sift features that is seperated class by class for test data
-    bovw_test = image_class(test_bovw_feature, visual_words) # Creates histograms for test data
-    results_bowl = knn(bovw_train, bovw_test) # Call the knn function
-    accuracy(results_bowl) # Calculates the accuracies and write the results to the console.
+    # test_bovw_feature = sift_features(test)[1] # Takes the sift features that is seperated class by class for test data
+    # bovw_test = image_class(test_bovw_feature, visual_words) # Creates histograms for test data
+    # results_bowl = knn(bovw_train, bovw_test) # Call the knn function
+    # accuracy(results_bowl) # Calculates the accuracies and write the results to the console.
     #images_print(images, bovw_train, bovw_test, test)
+
+    # Save
+    #np.save('bovw_train.npy', bovw_train)
+    #np.save('train_files.npy', train_files)
+
+    # Load
+    bovw_train= np.load('bovw_train.npy',allow_pickle='TRUE').item()
+    train_files= np.load('train_files.npy',allow_pickle='TRUE').item()
+
+    for cat in bovw_train:
+        img_list = bovw_train.get(cat)
+        for i, img in enumerate(img_list):
+            files_cat_list = train_files.get(cat)
+            img_file = files_cat_list[i]
+            print(img_file)
+            print("\n")
+            print(img)
     print("Fim")
 
     ## Bag of Visual Words End ##
