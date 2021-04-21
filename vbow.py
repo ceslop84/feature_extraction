@@ -2,6 +2,7 @@ import os
 import numpy as np
 import cv2
 import faiss
+from utils_gist import *
 
 def create_dir(dir):
     if not os.path.isdir(dir):
@@ -63,6 +64,26 @@ def sift_features(images):
 
     return [descriptor_list, sift_vectors]
 
+def gist_features(images):
+    # Creates descriptors using sift library
+    # Takes one parameter that is images dictionary
+    # Return an array whose first index holds the decriptor_list without an order
+    # And the second index holds the sift_vectors dictionary which holds the descriptors but this is seperated class by class
+    gist_vectors = {}
+    descriptor_list = []
+    gist = GistUtils()
+    for key,value in images.items():
+        features = []
+        for img in value:
+            des = gist.get_gist_vec(img)
+            if des is not None:
+                descriptor_list.extend(des)
+                features.append(des)
+                gist_vectors[key] = features
+
+    return [descriptor_list, gist_vectors]
+
+
 def crop_resize(img_file):
         img = cv2.imread(img_file, cv2.IMREAD_COLOR)
         y, x, c = img.shape
@@ -101,12 +122,13 @@ def load_images_from_file(file):
 
 if __name__ == '__main__':
     img, img_path = load_images_from_file('Images/labels.txt')  # take all images category by category
-    sifts = sift_features(img)
-    descriptor_list = sifts[0] # Takes the descriptor list which is unordered one
-    cat_list = sifts[1] # Takes the sift features that is seperated class by class for train data
-    size = [50, 500, 5000, 50000]
-    for s in size:
-        create_dir(f"Output/{s}/")
-    for s in size:
-        vbow = generate_vbow(s, descriptor_list, cat_list, 100, 10) # Takes the central points which is visual words
-        save(vbow, img_path, f"Output/{s}/")
+    gist = gist_features(img)
+    # sift = sift_features(img)
+    # descriptor_list = sift[0] # Takes the descriptor list which is unordered one
+    # cat_list = sift[1] # Takes the sift features that is seperated class by class for train data
+    # size = [50, 500, 5000]
+    # for s in size:
+    #     create_dir(f"Output/{s}/")
+    # for s in size:
+    #     vbow = generate_vbow(s, descriptor_list, cat_list, 100, 10) # Takes the central points which is visual words
+    #     save(vbow, img_path, f"Output/{s}/")
