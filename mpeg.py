@@ -11,31 +11,32 @@ def create_dir(dir):
 
 # Parameters.
 img_list = "Images/labels_small.txt"
-img_list_tmp = "image_list.txt"
 output_folder = "Output"
 
 # Running the tool with the defaults values.
-param_list = ["CSD", "SCD", "CLD", "DCD", "HTD", "EHD"]
+desc_list = ["CSD", "SCD", "CLD", "DCD", "HTD", "EHD"]
 
 # Output data.
-create_dir(f"Output/")
-create_dir(f"Output/{name}/")
+create_dir(output_folder)
+mpeg_folder = f"{output_folder}/mpeg/"
+create_dir(mpeg_folder)
+file_tmp = f"{mpeg_folder}/img_list.txt"
 
 #Removing the class (0, 1 and 2) info from the image list and creating a temp file.
 f_list = list()
 with open(img_list, "r") as f:
     for line in f:
         f_list.append(line.split(" ")[0])
-with open(img_list_tmp, "w") as f:
+with open(file_tmp, "w") as f:
     for obj in f_list:
         f.write(f"{obj}\n")
 
-for
+for d in desc_list:
     if os.name == "nt":
-        subprocess.run(f"mpeg7/windows/MPEG7Fex.exe CSD 64 {img_list_out} CSD_64.txt", shell=True)
+        subprocess.run(f"mpeg7/windows/MPEG7Fex.exe {d} {file_tmp} {mpeg_folder}/{d}.txt", shell=True)
     elif os.name == "posix":
         subprocess.run("sh env.sh", shell=True)
-        subprocess.run(f"./mpeg7/linux/MPEG7Fex CSD 64 {img_list_out} CSD_64.txt", shell=True)
+        subprocess.run(f"./mpeg7/linux/MPEG7Fex CSD 64 {d} {file_tmp} {mpeg_folder}/{d}.txt", shell=True)
     else:
         print("Sorry, OS not supported!")
         exit(1)
