@@ -3,8 +3,9 @@ import numpy as np
 import cv2
 import faiss
 from utils_gist import *
+from extract_patches.core import extract_patches
 
-TEST = False
+TEST = True
 
 def create_dir(dir):
     if not os.path.isdir(dir):
@@ -52,28 +53,71 @@ def generate_vbow(k, descriptor_list, cat_list, niter=100, nredo=10):
         dict_vbow[cat_key] = cat_list
     return dict_vbow
 
-def sift_features(images):
+def sift_features(img_dict, kp_dict):
     # Creates descriptors using sift library
     # Takes one parameter that is images dictionary
     # Return an array whose first index holds the decriptor_list without an order
     # And the second index holds the sift_vectors dictionary which holds the descriptors but this is seperated class by class
-    sift_vectors = {}
-    descriptor_list = []
+    sift_dict = dict()
+    descriptor_list = list()
     sift = cv2.xfeatures2d.SIFT_create()
-    for key,value in images.items():
+    for key,value in img_dict.items():
         features = []
         for i, img in enumerate(value):
-            kp, des = sift.detectAndCompute(img,None)
+            kp = kp_dict.get(key)[i]
+            kp, des = sift.compute(img, kp)
             if des is not None:
                 descriptor_list.extend(des)
                 features.append(des)
-                sift_vectors[key] = features
+                sift_dict[key] = features
             if TEST and i>10:
                 break
 
-    return ["sift", descriptor_list, sift_vectors]
+    return ["sift", descriptor_list, sift_dict]
 
-def gist_features(images):
+def extract_kp(img_dict):
+    kp_dict = dict()
+    sift = cv2.xfeatures2d.SIFT_create()
+    for key,value in img_dict.items():
+        kp_list = list()
+        for i, img in enumerate(value):
+            kp = sift.detect(img,None)
+            if kp is not None:
+                kp_list.append(kp)
+                kp_dict[key] = kp_list
+            if TEST and i>10:
+                break
+    return kp_dict
+
+def gist_features(img_dict, kp_dict):
+    # Creates descriptors using sift library
+    # Takes one parameter that is images dictionary
+    # Return an array whose first index holds the decriptor_list without an order
+    # And the second index holds the sift_vectors dictionary which holds the descriptors but this is seperated class by class
+    PATCH_SIZE = 64
+    mrSize = 1.0
+    gist_vectors = dict()
+    descriptor_list = list()
+    gist = GistUtils()
+    for key,value in img_dict.items():
+        features = []
+        for i, img in enumerate(value):
+            kp = kp_dict.get(key)[i]
+            patches = extract_patches(kp, img, PATCH_SIZE, mrSize, 'cv2')
+            des = list()
+            for sub_img in patches:
+                des.append(gist.get_gist_vec(sub_img))
+
+            if des is not None:
+                descriptor_list.extend(des)
+                features.append(des)
+                gist_vectors[key] = np.float32(features)
+            if TEST and i>10:
+                break
+
+    return ["gist", np.float32(descriptor_list), gist_vectors]
+
+def gist_img(img_dict):
     # Creates descriptors using sift library
     # Takes one parameter that is images dictionary
     # Return an array whose first index holds the decriptor_list without an order
@@ -81,7 +125,7 @@ def gist_features(images):
     gist_vectors = {}
     descriptor_list = []
     gist = GistUtils()
-    for key,value in images.items():
+    for key,value in img_dict.items():
         features = []
         for i, img in enumerate(value):
             des = gist.get_gist_vec(img)
@@ -133,8 +177,9 @@ def load_images_from_file(file):
 if __name__ == '__main__':
     img, img_path = load_images_from_file('Images/labels.txt')  # take all images category by category
     size = [50, 100, 250, 500, 750, 1000]
-    gist = gist_features(img)
-    sift = sift_features(img)
+    kp = extract_kp(img)
+    gist = gist_features(img, kp)
+    sift = sift_features(img, kp)
     descriptors = [gist, sift]
 
     for d in descriptors:
