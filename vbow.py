@@ -1,29 +1,12 @@
-import os
 import numpy as np
 import cv2
 import faiss
 from utils_gist import *
 from extract_patches.core import extract_patches
+from util import load_images_from_file, create_dir, save
 
-TEST = True
 
-def create_dir(dir):
-    if not os.path.isdir(dir):
-            try:
-                os.mkdir(dir)
-            except:
-                print(f"Creation of directory {dir} failed!")
-                exit(1)
-
-def save(vbow, cat_path_list, output_folder):
-    for cat,img_list in vbow.items():
-        for i, hist in enumerate(img_list):
-            path_list = cat_path_list.get(cat)
-            path = path_list[i]
-            folder_tree = path.split(".")[0]
-            file_name = folder_tree.split("/")[-1]
-            output_file = f"{output_folder}/{file_name}.txt"
-            np.savetxt(output_file, hist)
+TEST = False
 
 def generate_vbow(k, descriptor_list, cat_list, niter=100, nredo=10):
     # A k-means clustering algorithm who takes 2 parameter which is number of cluster(k) and the other is descriptors list(unordered 1d array)
@@ -62,16 +45,16 @@ def sift_features(img_dict, kp_dict):
     descriptor_list = list()
     sift = cv2.xfeatures2d.SIFT_create()
     for key,value in img_dict.items():
-        features = []
+        features = list()
         for i, img in enumerate(value):
             kp = kp_dict.get(key)[i]
             kp, des = sift.compute(img, kp)
             if des is not None:
                 descriptor_list.extend(des)
                 features.append(des)
-                sift_dict[key] = features
             if TEST and i>10:
                 break
+        sift_dict[key] = features
 
     return ["sift", descriptor_list, sift_dict]
 
@@ -94,88 +77,33 @@ def gist_features(img_dict, kp_dict):
     # Takes one parameter that is images dictionary
     # Return an array whose first index holds the decriptor_list without an order
     # And the second index holds the sift_vectors dictionary which holds the descriptors but this is seperated class by class
-    PATCH_SIZE = 64
-    mrSize = 1.0
-    gist_vectors = dict()
+    patch_size = 64
+    mr_size = 1.0
+    gist_dict = dict()
     descriptor_list = list()
     gist = GistUtils()
     for key,value in img_dict.items():
-        features = []
+        features = list()
         for i, img in enumerate(value):
             kp = kp_dict.get(key)[i]
-            patches = extract_patches(kp, img, PATCH_SIZE, mrSize, 'cv2')
+            patches = extract_patches(kp, img, patch_size, mr_size, 'cv2')
             des = list()
             for sub_img in patches:
                 des.append(gist.get_gist_vec(sub_img))
-
             if des is not None:
                 descriptor_list.extend(des)
                 features.append(des)
-                gist_vectors[key] = np.float32(features)
             if TEST and i>10:
                 break
+        gist_dict[key] = np.float32(features)
+
 
     return ["gist", np.float32(descriptor_list), gist_vectors]
 
-def gist_img(img_dict):
-    # Creates descriptors using sift library
-    # Takes one parameter that is images dictionary
-    # Return an array whose first index holds the decriptor_list without an order
-    # And the second index holds the sift_vectors dictionary which holds the descriptors but this is seperated class by class
-    gist_vectors = {}
-    descriptor_list = []
-    gist = GistUtils()
-    for key,value in img_dict.items():
-        features = []
-        for i, img in enumerate(value):
-            des = gist.get_gist_vec(img)
-            if des is not None:
-                descriptor_list.extend(des)
-                features.append(des)
-                gist_vectors[key] = np.float32(features)
-            if TEST and i>10:
-                break
-
-    return ["gist", np.float32(descriptor_list), gist_vectors]
-
-def crop_resize(img_file):
-        img = cv2.imread(img_file, cv2.IMREAD_COLOR)
-        y, x, c = img.shape
-        if y < x:
-            aux = int((x-y)/2)
-            img = img[:,aux:aux+y]
-        elif x < y:
-            aux = int((y-x)/2)
-            img = img[aux:aux+x,:]
-        return cv2.resize(img, (224, 224))
-
-def load_images_from_file(file):
-    # takes all images and convert them to grayscale.
-    # return a dictionary that holds all images category by category.
-    images = {}
-    files = {}
-    with open(file) as f:
-        for line in f:
-            img_path = line.split()[0]
-            cat = line.split()[1]
-            img = crop_resize(img_path)
-            if img is not None:
-                cat_img_list = images.get(cat)
-                cat_fl_list = files.get(cat)
-                if (cat_img_list is not None) and (cat_fl_list is not None):
-                    cat_img_list.append(img)
-                    cat_fl_list.append(img_path)
-                else:
-                    cat_img_list = []
-                    cat_fl_list = []
-                    cat_img_list.append(img)
-                    cat_fl_list.append(img_path)
-                    images[cat] = cat_img_list
-                    files[cat] = cat_fl_list
-    return images, files
-
-if __name__ == '__main__':
-    img, img_path = load_images_from_file('Images/labels.txt')  # take all images category by category
+def vbow(input_file, output_folder, test=False):
+    globals_list = globals()
+    globals_list['TEST'] = test
+    img, img_path = load_images_from_file(input_file)  # take all images category by category
     size = [50, 100, 250, 500, 750, 1000]
     kp = extract_kp(img)
     gist = gist_features(img, kp)
@@ -186,10 +114,14 @@ if __name__ == '__main__':
         name = d[0]
         desc_list = d[1] # Takes the descriptor list which is unordered one
         cat_list = d[2] # Takes the sift features that is seperated class by class for train data
-        create_dir(f"Output/")
-        create_dir(f"Output/{name}/")
+        create_dir(output_folder)
+        create_dir(f"{output_folder}/{name}/")
         for s in size:
-            create_dir(f"Output/{name}/{s}/")
+            create_dir(f"{output_folder}/{name}/{s}/")
         for s in size:
             vbow = generate_vbow(s, desc_list, cat_list, 100, 10) # Takes the central points which is visual words
-            save(vbow, img_path, f"Output/{name}/{s}/")
+            save(vbow, img_path, f"{output_folder}/{name}/{s}/")
+
+if __name__ == '__main__':
+    vbow('Images/labels.txt', "Output", True)
+
