@@ -75,13 +75,13 @@ def extract_kp(img_dict):
             kp_rs= [p for p in kp if (p.size > mean_s) and (p.response > mean_r)]
 
             img_r = cv2.drawKeypoints(img, kp_r, None, color=(255,0,0))
-            cv2.imwrite(f'{i}_m_r_{len(kp_r)}.jpg',img_r)
+            cv2.imwrite(f'{key}_{i}_m_r_{len(kp_r)}.jpg',img_r)
 
             img_s = cv2.drawKeypoints(img, kp_s, None, color=(255,0,0))
-            cv2.imwrite(f'{i}_m_s_{len(kp_s)}.jpg',img_s)
+            cv2.imwrite(f'{key}_{i}_m_s_{len(kp_s)}.jpg',img_s)
 
             img_rs = cv2.drawKeypoints(img, kp_rs, None, color=(255,0,0))
-            cv2.imwrite(f'{i}_m_rs_{len(kp_rs)}.jpg',img_rs)
+            cv2.imwrite(f'{key}_{i}_m_rs_{len(kp_rs)}.jpg',img_rs)
 
 
             def remove_overlap(img, kp, name):
@@ -95,9 +95,9 @@ def extract_kp(img_dict):
                 img = cv2.drawKeypoints(img, kp, None, color=(255,0,0))
                 cv2.imwrite(f'{name}_{len(kp_ol)}.jpg',img)
 
-            remove_overlap(img, kp_r, f"{i}_m_ol_r")
-            remove_overlap(img, kp_s, f"{i}_m_ol_s")
-            remove_overlap(img, kp_rs, f"{i}_m_ol_rs")
+            remove_overlap(img, kp_r, f"{key}_{i}_m_ol_r")
+            remove_overlap(img, kp_s, f"{key}_{i}_m_ol_s")
+            remove_overlap(img, kp_rs, f"{key}_{i}_m_ol_rs")
 
             if kp_rs is not None:
                 kp_list.append(kp_rs)
