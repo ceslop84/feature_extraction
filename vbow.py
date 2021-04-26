@@ -59,6 +59,23 @@ def sift_features(img_dict, kp_dict):
     return ["sift", descriptor_list, sift_dict]
 
 def extract_kp(img_dict):
+
+    def filter_response_size(kp):
+        mean_r = np.mean([p.response for p in kp])
+        mean_s = np.mean([p.size for p in kp])
+        kp_rs = [p for p in kp if (p.size > mean_s) and (p.response > mean_r)]
+        return kp_rs
+
+    def filter_overlap(img, kp, name):
+        remove_list = list()
+        for i, p in enumerate(kp):
+            for j in range (i+1, len(kp)):
+                over = cv2.KeyPoint_overlap(p, kp[j])
+                if over > 0 and not(j in remove_list):
+                    remove_list.append(j)
+        kp_ol = [p for i, p in enumerate(kp) if i not in remove_list]
+        return kp_ol
+
     kp_dict = dict()
     sift = cv2.xfeatures2d.SIFT_create()
     for key,value in img_dict.items():
@@ -66,41 +83,11 @@ def extract_kp(img_dict):
         for i, img in enumerate(value):
 
             kp = sift.detect(img,None)
+            kp = filter_response_size(kp)
+            kp = filter_overlap(kp)
 
-            mean_r = np.mean([p.response for p in kp])
-            mean_s = np.mean([p.size for p in kp])
-
-            kp_r = [p for p in kp if p.response > mean_r]
-            kp_s= [p for p in kp if p.size > mean_s]
-            kp_rs= [p for p in kp if (p.size > mean_s) and (p.response > mean_r)]
-
-            img_r = cv2.drawKeypoints(img, kp_r, None, color=(255,0,0))
-            cv2.imwrite(f'{key}_{i}_m_r_{len(kp_r)}.jpg',img_r)
-
-            img_s = cv2.drawKeypoints(img, kp_s, None, color=(255,0,0))
-            cv2.imwrite(f'{key}_{i}_m_s_{len(kp_s)}.jpg',img_s)
-
-            img_rs = cv2.drawKeypoints(img, kp_rs, None, color=(255,0,0))
-            cv2.imwrite(f'{key}_{i}_m_rs_{len(kp_rs)}.jpg',img_rs)
-
-
-            def remove_overlap(img, kp, name):
-                remove_list = list()
-                for i, p in enumerate(kp):
-                    for j in range (i+1, len(kp)):
-                        over = cv2.KeyPoint_overlap(p, kp[j])
-                        if over > 0 and not(j in remove_list):
-                            remove_list.append(j)
-                kp_ol = [p for i, p in enumerate(kp) if i not in remove_list]
-                img = cv2.drawKeypoints(img, kp, None, color=(255,0,0))
-                cv2.imwrite(f'{name}_{len(kp_ol)}.jpg',img)
-
-            remove_overlap(img, kp_r, f"{key}_{i}_m_ol_r")
-            remove_overlap(img, kp_s, f"{key}_{i}_m_ol_s")
-            remove_overlap(img, kp_rs, f"{key}_{i}_m_ol_rs")
-
-            if kp_rs is not None:
-                kp_list.append(kp_rs)
+            if kp is not None:
+                kp_list.append(kp)
             if TEST and i>5:
                 break
         kp_dict[key] = kp_list
