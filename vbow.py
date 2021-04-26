@@ -52,7 +52,7 @@ def sift_features(img_dict, kp_dict):
             if des is not None:
                 descriptor_list.extend(des)
                 features.append(des)
-            if TEST and i>10:
+            if TEST and i>5:
                 break
         sift_dict[key] = features
 
@@ -60,16 +60,65 @@ def sift_features(img_dict, kp_dict):
 
 def extract_kp(img_dict):
     kp_dict = dict()
+    fast = cv2.FastFeatureDetector_create()
     sift = cv2.xfeatures2d.SIFT_create()
     for key,value in img_dict.items():
         kp_list = list()
         for i, img in enumerate(value):
+
+            # kpf = fast.detect(img,None)
+            # print( "Total Keypoints with nonmaxSuppression: {}".format(len(kpf)) )
+            # img2 = cv2.drawKeypoints(img, kpf, None, color=(255,0,0))
+            # cv2.imwrite('img1.jpg',img2)
+
+            # fast.setThreshold(20)
+            # kpf = fast.detect(img,None)
+            # print( "Total Keypoints with nonmaxSuppression: {}".format(len(kpf)) )
+            # img2 = cv2.drawKeypoints(img, kpf, None, color=(255,0,0))
+            # cv2.imwrite('img2.jpg',img2)
+
+            # fast.setThreshold(30)
+            # kpf = fast.detect(img,None)
+            # print( "Total Keypoints with nonmaxSuppression: {}".format(len(kpf)) )
+            # img2 = cv2.drawKeypoints(img, kpf, None, color=(255,0,0))
+            # cv2.imwrite('img3.jpg',img2)
+
             kp = sift.detect(img,None)
-            if kp is not None:
-                kp_list.append(kp)
-                kp_dict[key] = kp_list
-            if TEST and i>10:
+            print( "Total Keypoints with nonmaxSuppression: {}".format(len(kp)) )
+            img2 = cv2.drawKeypoints(img, kp, None, color=(255,0,0))
+            cv2.imwrite('img4.jpg',img2)
+
+            mean = np.mean([p.response for p in kp])
+            kp_filter = [p for p in kp if p.response > mean]
+            print( "Total Keypoints with nonmaxSuppression: {}".format(len(kp_filter)) )
+            img2 = cv2.drawKeypoints(img, kp_filter, None, color=(255,0,0))
+            cv2.imwrite('img5.jpg',img2)
+
+            # pt_list = list()
+            # for p in kp:
+            #     pt_list.append(p.pt)
+            # x = np.array(pt_list)
+            # shp = x.shape[1]
+            # kmeans = faiss.Kmeans(shp, 100, niter=10, verbose=True, nredo=1)
+            # kmeans.train(x)
+            remove_list = list()
+            for i, p in enumerate(kp_filter):
+                p.size = p.size * 2
+                for j in range (i+1, len(kp_filter)):
+                    over = cv2.KeyPoint_overlap(p, kp_filter[j])
+                    if over > 0 and not(j in remove_list):
+                        remove_list.append(j)
+
+            kp_ol = [p for i, p in enumerate(kp_filter) if i not in remove_list]
+            print( "Total Keypoints with nonmaxSuppression: {}".format(len(kp_ol)) )
+            img2 = cv2.drawKeypoints(img, kp_ol, None, color=(255,0,0))
+            cv2.imwrite('img8.jpg',img2)
+
+            if kp_filter is not None:
+                kp_list.append(kp_filter)
+            if TEST and i>5:
                 break
+        kp_dict[key] = kp_list
     return kp_dict
 
 def gist_features(img_dict, kp_dict):
@@ -93,9 +142,9 @@ def gist_features(img_dict, kp_dict):
             if des is not None:
                 descriptor_list.extend(des)
                 features.append(des)
-            if TEST and i>10:
+            if TEST and i>5:
                 break
-        gist_dict[key] = np.float32(features)
+        gist_dict[key] = features
 
 
     return ["gist", np.float32(descriptor_list), gist_vectors]

@@ -28,7 +28,8 @@ def gist_img(img_dict):
 
 def gist(input_file, output_folder, test=False):
 
-    TEST = test
+    globals_list = globals()
+    globals_list['TEST'] = test
     img_dict, img_dict_path = load_images_from_file(input_file)  # take all images category by category
 
     gist = gist_img(img_dict)
