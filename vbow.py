@@ -36,28 +36,6 @@ def generate_vbow(k, descriptor_list, cat_list, niter=100, nredo=10):
         dict_vbow[cat_key] = cat_list
     return dict_vbow
 
-def sift_features(img_dict, kp_dict):
-    # Creates descriptors using sift library
-    # Takes one parameter that is images dictionary
-    # Return an array whose first index holds the decriptor_list without an order
-    # And the second index holds the sift_vectors dictionary which holds the descriptors but this is seperated class by class
-    sift_dict = dict()
-    descriptor_list = list()
-    sift = cv2.xfeatures2d.SIFT_create()
-    for key,value in img_dict.items():
-        features = list()
-        for i, img in enumerate(value):
-            kp = kp_dict.get(key)[i]
-            kp, des = sift.compute(img, kp)
-            if des is not None:
-                descriptor_list.extend(des)
-                features.append(des)
-            if TEST and i>5:
-                break
-        sift_dict[key] = features
-
-    return ["sift", descriptor_list, sift_dict]
-
 def extract_kp(img_dict):
 
     def filter_response_size(kp):
@@ -66,7 +44,7 @@ def extract_kp(img_dict):
         kp_rs = [p for p in kp if (p.size > mean_s) and (p.response > mean_r)]
         return kp_rs
 
-    def filter_overlap(img, kp, name):
+    def filter_overlap(kp):
         remove_list = list()
         for i, p in enumerate(kp):
             for j in range (i+1, len(kp)):
@@ -93,6 +71,28 @@ def extract_kp(img_dict):
         kp_dict[key] = kp_list
     return kp_dict
 
+def sift_features(img_dict, kp_dict):
+    # Creates descriptors using sift library
+    # Takes one parameter that is images dictionary
+    # Return an array whose first index holds the decriptor_list without an order
+    # And the second index holds the sift_vectors dictionary which holds the descriptors but this is seperated class by class
+    sift_dict = dict()
+    descriptor_list = list()
+    sift = cv2.xfeatures2d.SIFT_create()
+    for key,value in img_dict.items():
+        features = list()
+        for i, img in enumerate(value):
+            kp = kp_dict.get(key)[i]
+            kp, des = sift.compute(img, kp)
+            if des is not None:
+                descriptor_list.extend(des)
+                features.append(des)
+            if TEST and i>5:
+                break
+        sift_dict[key] = features
+
+    return ["sift", descriptor_list, sift_dict]
+
 def gist_features(img_dict, kp_dict):
     # Creates descriptors using sift library
     # Takes one parameter that is images dictionary
@@ -110,7 +110,9 @@ def gist_features(img_dict, kp_dict):
             patches = extract_patches(kp, img, patch_size, mr_size, 'cv2')
             des = list()
             for sub_img in patches:
-                des.append(gist.get_gist_vec(sub_img))
+                des_patch = gist.get_gist_vec(sub_img)[0]
+                des.append(des_patch)
+            des = np.array(des, dtype="float32")
             if des is not None:
                 descriptor_list.extend(des)
                 features.append(des)
@@ -119,7 +121,7 @@ def gist_features(img_dict, kp_dict):
         gist_dict[key] = features
 
 
-    return ["gist", np.float32(descriptor_list), gist_vectors]
+    return ["gist", np.float32(descriptor_list), gist_dict]
 
 def vbow(input_file, output_folder, test=False):
     globals_list = globals()
@@ -129,7 +131,7 @@ def vbow(input_file, output_folder, test=False):
     kp = extract_kp(img)
     gist = gist_features(img, kp)
     sift = sift_features(img, kp)
-    descriptors = [gist, sift]
+    descriptors = [sift, gist]
 
     for d in descriptors:
         name = d[0]
