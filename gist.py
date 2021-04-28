@@ -3,8 +3,6 @@ from utils_gist import *
 from util import load_images_from_file, create_dir, save
 
 
-TEST = False
-
 def gist_img(img_dict):
     # Creates descriptors using sift library
     # Takes one parameter that is images dictionary
@@ -20,16 +18,12 @@ def gist_img(img_dict):
             if des is not None:
                 descriptor_list.extend(des)
                 features.append(des)
-            if TEST and i>10:
-                break
         gist_vectors[key] = np.float32(features)
 
     return ["gist", np.float32(descriptor_list), gist_vectors]
 
-def gist(input_file, output_folder, test=False):
+def gist(input_file, output_folder):
 
-    globals_list = globals()
-    globals_list['TEST'] = test
     img_dict, img_dict_path = load_images_from_file(input_file)  # take all images category by category
 
     gist = gist_img(img_dict)
@@ -39,6 +33,7 @@ def gist(input_file, output_folder, test=False):
     create_dir(output_folder)
     create_dir(f"{output_folder}/{name}/")
     save(cat_dict, img_dict_path, f"{output_folder}/{name}/")
+    print(f"\nThe execution of gist is done!\n")
 
 if __name__ == '__main__':
     gist('Images/labels_small.txt', "Output", True)

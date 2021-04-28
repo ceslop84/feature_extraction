@@ -3,12 +3,7 @@ import subprocess
 from util import create_dir
 
 
-TEST = False
-
-def mpeg7(input_file, output_folder, test=False):
-
-    globals_list = globals()
-    globals_list['TEST'] = test
+def mpeg7(input_file, output_folder):
 
     # Running the tool with the defaults values.
     desc_list = ["CSD", "SCD", "CLD", "DCD", "HTD", "EHD"]
@@ -44,6 +39,7 @@ def mpeg7(input_file, output_folder, test=False):
 
     # Removing the temp file.
     os.remove(file_tmp)
+    print(f"\nThe execution of mpeg7 is done!\n")
 
 if __name__ == '__main__':
     mpeg7('Images/labels_small.txt', "Output", True)

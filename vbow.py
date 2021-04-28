@@ -6,15 +6,10 @@ from extract_patches.core import extract_patches
 from util import load_images_from_file, create_dir, save
 
 
-TEST = False
-
 def generate_vbow(k, descriptor_list, cat_list, niter=100, nredo=10):
     # A k-means clustering algorithm who takes 2 parameter which is number of cluster(k) and the other is descriptors list(unordered 1d array)
     # Returns an array that holds central points.
-    if TEST:
-        k = 5
-        niter = 10
-        nredo = 1
+    print(f"--- Creating VBoW with {k} words from a list of {len(descriptor_list)}---")
     x = np.array(descriptor_list)
     shp = x.shape[1]
     kmeans = faiss.Kmeans(shp, k, niter=niter, verbose=True, nredo=nredo)
@@ -29,7 +24,7 @@ def generate_vbow(k, descriptor_list, cat_list, niter=100, nredo=10):
         for d in desc_list:
             histogram = np.zeros(k)
             #To compute the mapping from a set of vectors x to the cluster centroids after kmeans has finished training, use:
-            dist, ind = kmeans.index.search(np.array(d), 1)
+            dist, ind = kmeans.index.search(d, 1)
             for i in ind:
                 histogram[i] += 1
             cat_list.append(histogram)
@@ -54,6 +49,7 @@ def extract_kp(img_dict):
         kp_ol = [p for i, p in enumerate(kp) if i not in remove_list]
         return kp_ol
 
+    print("--- Extracting KEYPOINTS from images. ---")
     kp_dict = dict()
     sift = cv2.xfeatures2d.SIFT_create()
     for key,value in img_dict.items():
@@ -66,8 +62,6 @@ def extract_kp(img_dict):
 
             if kp is not None:
                 kp_list.append(kp)
-            if TEST and i>5:
-                break
         kp_dict[key] = kp_list
     return kp_dict
 
@@ -76,9 +70,11 @@ def sift_features(img_dict, kp_dict):
     # Takes one parameter that is images dictionary
     # Return an array whose first index holds the decriptor_list without an order
     # And the second index holds the sift_vectors dictionary which holds the descriptors but this is seperated class by class
+    print("--- Extracting SIFT features from images. ---")
     sift_dict = dict()
     descriptor_list = list()
     sift = cv2.xfeatures2d.SIFT_create()
+    cont = 1
     for key,value in img_dict.items():
         features = list()
         for i, img in enumerate(value):
@@ -87,8 +83,8 @@ def sift_features(img_dict, kp_dict):
             if des is not None:
                 descriptor_list.extend(des)
                 features.append(des)
-            if TEST and i>5:
-                break
+            print(f"\nSIFT descriptors for the {cont} image successfully generated.\n")
+            cont += 1
         sift_dict[key] = features
 
     return ["sift", descriptor_list, sift_dict]
@@ -98,40 +94,41 @@ def gist_features(img_dict, kp_dict):
     # Takes one parameter that is images dictionary
     # Return an array whose first index holds the decriptor_list without an order
     # And the second index holds the sift_vectors dictionary which holds the descriptors but this is seperated class by class
+    print("--- Extracting GIST features from images. ---")
     patch_size = 64
     mr_size = 1.0
     gist_dict = dict()
     descriptor_list = list()
     gist = GistUtils()
+    cont = 1
     for key,value in img_dict.items():
         features = list()
         for i, img in enumerate(value):
             kp = kp_dict.get(key)[i]
             patches = extract_patches(kp, img, patch_size, mr_size, 'cv2')
             des = list()
-            for sub_img in patches:
+            for j, sub_img in enumerate(patches):
                 des_patch = gist.get_gist_vec(sub_img)[0]
                 des.append(des_patch)
+                print(f"GIST descriptors for the patch {j}/{len(patches)} from image {cont} generated.\n")
             des = np.array(des, dtype="float32")
             if des is not None:
                 descriptor_list.extend(des)
                 features.append(des)
-            if TEST and i>5:
-                break
+            print(f"\nGIST descriptors for the {cont} image successfully generated.\n")
+            cont += 1
         gist_dict[key] = features
 
 
     return ["gist", np.float32(descriptor_list), gist_dict]
 
-def vbow(input_file, output_folder, test=False):
-    globals_list = globals()
-    globals_list['TEST'] = test
+def vbow(input_file, output_folder):
     img, img_path = load_images_from_file(input_file)  # take all images category by category
-    size = [50, 100, 250, 500, 750, 1000]
+    size = [5, 50, 100, 250, 500, 750, 1000]
     kp = extract_kp(img)
     gist = gist_features(img, kp)
     sift = sift_features(img, kp)
-    descriptors = [sift, gist]
+    descriptors = [gist, sift]
 
     for d in descriptors:
         name = d[0]
@@ -141,10 +138,11 @@ def vbow(input_file, output_folder, test=False):
         create_dir(f"{output_folder}/{name}/")
         for s in size:
             create_dir(f"{output_folder}/{name}/{s}/")
+        print(f"--- Create VBoW for {name} features. ---")
         for s in size:
             vbow = generate_vbow(s, desc_list, cat_list, 100, 10) # Takes the central points which is visual words
             save(vbow, img_path, f"{output_folder}/{name}/{s}/")
 
 if __name__ == '__main__':
-    vbow('Images/labels.txt', "Output", True)
+    vbow('Images/labels.txt', "Output")
 
