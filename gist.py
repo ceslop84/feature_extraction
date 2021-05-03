@@ -14,6 +14,7 @@ def gist_img(img_dict):
     for key,value in img_dict.items():
         features = list()
         for i, img in enumerate(value):
+            print(f"Generating GIST descriptors: {i}")
             des = gist.get_gist_vec(img)
             if des is not None:
                 descriptor_list.extend(des)

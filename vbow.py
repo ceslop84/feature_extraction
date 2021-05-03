@@ -6,7 +6,7 @@ from extract_patches.core import extract_patches
 from util import load_images_from_file, create_dir, save
 
 
-def generate_vbow(k, descriptor_list, cat_list, niter=100, nredo=10):
+def generate_vbow(k, descriptor_list, cat_dict, niter=100, nredo=10):
     # A k-means clustering algorithm who takes 2 parameter which is number of cluster(k) and the other is descriptors list(unordered 1d array)
     # Returns an array that holds central points.
     print(f"--- Creating VBoW with {k} words from a list of {len(descriptor_list)}---")
@@ -18,18 +18,22 @@ def generate_vbow(k, descriptor_list, cat_list, niter=100, nredo=10):
     # Takes 2 parameters. The first one is a dictionary that holds the descriptors that are separated class by class
     # And the second parameter is an array that holds the central points (visual words) of the k means clustering
     # Returns a dictionary that holds the histograms for each images that are separated class by class.
-    dict_vbow = {}
-    for cat_key,desc_list in cat_list.items():
-        cat_list = []
+    vbow_dict = dict()
+    for cat_key,desc_list in cat_dict.items():
+        cat_list = list()
         for d in desc_list:
             histogram = np.zeros(k)
-            #To compute the mapping from a set of vectors x to the cluster centroids after kmeans has finished training, use:
-            dist, ind = kmeans.index.search(d, 1)
-            for i in ind:
-                histogram[i] += 1
+            if d is not None:
+                #To compute the mapping from a set of vectors x to the cluster centroids after kmeans has finished training, use:
+                try:
+                    dist, ind = kmeans.index.search(d, 1)
+                    for i in ind:
+                        histogram[i] += 1
+                except Exception as e_d:
+                    print(f"Erro ao processar d: {d}")
             cat_list.append(histogram)
-        dict_vbow[cat_key] = cat_list
-    return dict_vbow
+        vbow_dict[cat_key] = cat_list
+    return vbow_dict
 
 def extract_kp(img_dict):
 
@@ -82,11 +86,10 @@ def sift_features(img_dict, kp_dict):
             kp, des = sift.compute(img, kp)
             if des is not None:
                 descriptor_list.extend(des)
-                features.append(des)
+            features.append(des)
             print(f"\nSIFT descriptors for the {cont} image successfully generated.\n")
             cont += 1
         sift_dict[key] = features
-
     return ["sift", descriptor_list, sift_dict]
 
 def gist_features(img_dict, kp_dict):
@@ -111,10 +114,10 @@ def gist_features(img_dict, kp_dict):
                 des_patch = gist.get_gist_vec(sub_img)[0]
                 des.append(des_patch)
                 print(f"GIST descriptors for the patch {j}/{len(patches)} from image {cont} generated.\n")
-            des = np.array(des, dtype="float32")
             if des is not None:
+                des = np.array(des, dtype="float32")
                 descriptor_list.extend(des)
-                features.append(des)
+            features.append(des)
             print(f"\nGIST descriptors for the {cont} image successfully generated.\n")
             cont += 1
         gist_dict[key] = features
@@ -126,9 +129,10 @@ def vbow(input_file, output_folder):
     img, img_path = load_images_from_file(input_file)  # take all images category by category
     size = [5, 50, 100, 250, 500, 750, 1000]
     kp = extract_kp(img)
+    #sift = sift_features(img, kp)
     gist = gist_features(img, kp)
-    sift = sift_features(img, kp)
-    descriptors = [gist, sift]
+    descriptors = [gist]
+    #descriptors = [gist, sift]
 
     for d in descriptors:
         name = d[0]

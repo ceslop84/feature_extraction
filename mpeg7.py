@@ -29,6 +29,7 @@ def mpeg7(input_file, output_folder):
             subprocess.run("./env.sh", shell=True)
 
     for d in desc_list:
+        print(f"Generating MPEG7 descriptors: {d}")
         if os.name == "nt":
             subprocess.run(f"mpeg7/windows/MPEG7Fex.exe {d} {file_tmp} {mpeg_folder}/{d}.txt", shell=True)
         elif os.name == "posix":
