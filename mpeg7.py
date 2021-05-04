@@ -19,8 +19,6 @@ def mpeg7(input_file, output_folder):
     with open(input_file, "r") as f:
         for i, line in enumerate(f):
             f_list.append(line.split(" ")[0])
-            if i>10:
-                break
     with open(file_tmp, "w") as f:
         for obj in f_list:
             f.write(f"{obj}\n")
@@ -43,6 +41,6 @@ def mpeg7(input_file, output_folder):
     print(f"\nThe execution of mpeg7 is done!\n")
 
 if __name__ == '__main__':
-    mpeg7('Images/labels_small.txt', "Output", True)
+    mpeg7('Images/labels.txt', "Output")
 
 
